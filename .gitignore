@@ -212,38 +212,10 @@ __marimo__/
 # ==============================================================================
 # Deep Learning & Machine Learning Ignores
 # ==============================================================================
-# Model Weights & Checkpoints
-*.pt
-*.pth
-*.ckpt
-*.bin
-*.safetensors
-*.h5
-*.hdf5
-*.onnx
-*.tflite
-*.engine
-*.param
-checkpoints/
-saved_models/
-weights/
-
-# Datasets & Large Data Files
-data/
-datasets/
-raw_data/
-processed_data/
-*.zip
-*.tar
-*.gz
-*.7z
-
-# Training Logs & Visualizations
+# Training Logs & Visualizations (不提交训练日志)
 runs/
 wandb/
 logs/
-output/
-outputs/
 .hydra/
 mlruns/
 lightning_logs/
