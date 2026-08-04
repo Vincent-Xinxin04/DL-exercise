@@ -181,25 +181,17 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# PyCharm
-#   JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#   be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#   and can be added to the global gitignore or merged into this file.  For a more nuclear
-#   option (not recommended) you can uncomment the following to ignore the entire idea folder.
-# .idea/
+# PyCharm & VSCode IDE
+.idea/
+.vscode/
+
+# Operating System files
+.DS_Store
+Thumbs.db
 
 # Abstra
-#   Abstra is an AI-powered process automation framework.
-#   Ignore directories containing user credentials, local state, and settings.
-#   Learn more at https://abstra.io/docs
 .abstra/
 
-# Visual Studio Code
-#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
-#   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#   and can be added to the global gitignore or merged into this file. However, if you prefer, 
-#   you could uncomment the following to ignore the entire vscode folder
-# .vscode/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
@@ -216,3 +208,43 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ==============================================================================
+# Deep Learning & Machine Learning Ignores
+# ==============================================================================
+# Model Weights & Checkpoints
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.safetensors
+*.h5
+*.hdf5
+*.onnx
+*.tflite
+*.engine
+*.param
+checkpoints/
+saved_models/
+weights/
+
+# Datasets & Large Data Files
+data/
+datasets/
+raw_data/
+processed_data/
+*.zip
+*.tar
+*.gz
+*.7z
+
+# Training Logs & Visualizations
+runs/
+wandb/
+logs/
+output/
+outputs/
+.hydra/
+mlruns/
+lightning_logs/
+
