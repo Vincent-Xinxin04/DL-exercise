@@ -1,0 +1,26 @@
+# Exclude virtual environment
+venv/
+.venv/
+
+# Exclude source control
+.git/
+.github/
+.gitignore
+
+# Exclude Python cache and compiled files
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.pytest_cache/
+
+# Exclude raw training and intermediate datasets (keep only required test datasets or let platform mount them)
+源码/data/train.csv
+源码/data/train_pseudo.csv
+
+# Exclude training cache files in 模型/ to reduce image size
+模型/full_data_cache_final.pth
+模型/full_data_cache_pseudo.pth
+
+# Exclude local submission directory
+提交结果/

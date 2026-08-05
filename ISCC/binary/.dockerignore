@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.heartbeat
+*.flake8
+.hypothesis/
+.pytest_cache/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Data and Models
+# 如果训练数据很大，建议不要打包进镜像，而是通过挂载卷的方式
+# 源码/data/
+# 提交结果/ 下的所有内容
+提交结果/*
+
+# Docker
+docker容器/
+Dockerfile
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db

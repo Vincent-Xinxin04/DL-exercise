@@ -220,3 +220,4 @@ logs/
 mlruns/
 lightning_logs/
 
+*.exe

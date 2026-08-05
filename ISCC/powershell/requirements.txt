@@ -1,0 +1,15 @@
+pandas==3.0.2
+numpy==2.4.4
+catboost==1.2.10
+xgboost==3.2.0
+lightgbm==4.6.0
+scikit-learn==1.8.0
+scipy==1.17.1
+joblib==1.5.3
+torch==2.6.0
+fsspec==2026.4.0
+threadpoolctl==3.6.0
+typing_extensions==4.15.0
+python-dateutil==2.9.0.post0
+tzdata==2026.2
+six==1.17.0
