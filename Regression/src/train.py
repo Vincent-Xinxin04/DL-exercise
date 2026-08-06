@@ -87,8 +87,8 @@ def train(train_loder,valid_loder,model,config,device):
     criterion = nn.MSELoss(reduction='mean')
     optimizer = torch.optim.Adam(model.parameters(),lr=config['learning_rate'])
     writer = SummaryWriter()
-    if not os.path.exists('./models'):
-        os.makedirs('./models')
+    if not os.path.exists('../models'):
+        os.makedirs('../models')
     n_epochs, best_loss, step, early_stop = config['n_epochs'], math.inf,0,0
     for epoch in range(n_epochs):
         model.train()
@@ -152,13 +152,13 @@ config = {
     'batch_size':64,
     'learning_rate':0.001,
     'early_stop':400,
-    'model_path':'./models/best_model.pth'
+    'model_path':'../models/best_model.pth'
 }
 if __name__ == '__main__':
     #设置种子
     set_seed(config['seed'])
     #读取数据
-    train_data,test_data=pd.read_csv('./data/train.csv').values ,pd.read_csv('./data/test.csv').values
+    train_data,test_data=pd.read_csv('../data/train.csv').values ,pd.read_csv('../data/test.csv').values
     #分割训练集和验证集
     train_data,valid_data = train_valid_split(train_data,config['valid_ratio'],config['seed'])
 
