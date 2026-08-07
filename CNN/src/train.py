@@ -102,7 +102,7 @@ class FoodModel(nn.Module):
 set_seed(42)
 batch_size = 64
 learning_rate = 0.001
-n_epochs = 10
+n_epochs = 30
 
 #训练数据集准备
 train_set = FoodDataset('../data/food11/training', transform=train_tfm,mode='train')
@@ -153,7 +153,7 @@ if __name__ == '__main__':
 
         #验证集
         model.eval()
-        for x,y in valid_loder:
+        for x,y in tqdm(valid_loder):
             x = x.to(device)
             y = y.to(device)
             with torch.no_grad():
