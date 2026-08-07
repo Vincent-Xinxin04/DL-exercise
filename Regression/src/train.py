@@ -158,7 +158,9 @@ if __name__ == '__main__':
     #设置种子
     set_seed(config['seed'])
     #读取数据
+    print('Loading data...')
     train_data,test_data=pd.read_csv('../data/train.csv').values ,pd.read_csv('../data/test.csv').values
+    print(f'Train data shape: {train_data.shape}, Test data shape: {test_data.shape}')
     #分割训练集和验证集
     train_data,valid_data = train_valid_split(train_data,config['valid_ratio'],config['seed'])
 
@@ -175,4 +177,7 @@ if __name__ == '__main__':
 
 
     model = mymodel(raw_x_train.shape[1]).to(device)
+    print(f'Model input dim: {raw_x_train.shape[1]}, Device: {device}')
+    print('Starting training...')
     train(train_loder,valid_loder,model,config,device)
+    print('Training completed!')

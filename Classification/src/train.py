@@ -190,6 +190,8 @@ if __name__ == '__main__':
         mean_train_loss = train_loss / len(train_loader)
         mean_train_acc = train_acc / len(train_set)
 
+        print(f'Epoch {epoch+1}/{num_epochs} | Train Loss: {mean_train_loss:.4f} | Train Acc: {mean_train_acc:.4f}')
+
         model.eval()
         for x,y in tqdm(val_loader):
             x = x.to(device)
@@ -201,10 +203,12 @@ if __name__ == '__main__':
             val_acc += (predicted == y).sum().item()
         mean_val_loss = val_loss / len(val_loader)
         mean_val_acc = val_acc / len(val_set)
+        print(f'Epoch {epoch+1}/{num_epochs} | Val   Loss: {mean_val_loss:.4f} | Val   Acc: {mean_val_acc:.4f}')
 
         if mean_val_acc > best_acc:
             best_acc = mean_val_acc
             torch.save(model.state_dict(), model_path)
+            print(f'  -> Best model saved (Val Acc: {best_acc:.4f})')
             early_stop = 0
         else: 
             early_stop += 1
