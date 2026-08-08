@@ -1,6 +1,6 @@
 # DL-exercise
 
-深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN 三个完整项目。
+深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Transformer 四个完整项目。
 
 ---
 
@@ -11,6 +11,7 @@
 | [Regression](#1-regression) | COVID-19 阳性率预测 | MLP | 93 维特征 |
 | [Classification](#2-classification) | 帧级音素分类 | MLP | MFCC + 上下文拼接 |
 | [CNN](#3-cnn) | 食物图像分类 | VGG 风格 CNN | 224x224 RGB |
+| [Transformer](#4-transformer) | 说话人识别 | Transformer Encoder | mel 频谱 (T, 40) |
 
 ---
 
@@ -155,6 +156,69 @@ CNN/
 
 ---
 
+## 4. Transformer
+
+**任务**：说话人识别——给定语音的 mel 频谱特征，预测说话人身份（600 类）。
+
+**数据处理**：
+- 原始特征：40 维 mel 频谱（40 个 mel filter banks）
+- 训练时随机截取固定长度 `seg_len=256` 帧，不足则尾部补零
+- 推理时截取前 256 帧
+
+**模型**：Transformer Encoder（无 Decoder）：
+
+```
+输入 (batch, T, 40)
+    ↓
+prenet: Linear(40 → d_model=80)
+    ↓
+permute → (T, batch, 80)
+    ↓
+TransformerEncoder(6 层, nhead=8, FFN=2048)
+    ↓
+mean pooling → (batch, 80)
+    ↓
+classifier: 80 → 80 → 600
+    ↓
+输出 (batch, 600)
+```
+
+**训练配置**：
+
+| 参数 | 值 |
+|------|-----|
+| 优化器 | Adam（lr=1e-3） |
+| 损失函数 | CrossEntropyLoss |
+| LR 调度 | Warmup（前 10% 步） + Cosine 衰减 |
+| Batch Size | 32 |
+| Epochs | 15（Early Stop=3） |
+| 训练/验证比例 | 80% / 20% |
+
+**数据**：
+
+```
+Transformer/data/Dataset/
+├── mapping.json          # 说话人 → ID 映射（600 人）
+├── metadata.json         # 训练集元数据（说话人 → 音频文件列表 + 标签）
+├── testdata.json         # 测试集元数据（音频文件列表，无标签）
+└── uttr-*.pt             # 音频特征文件（每文件 shape: T × 40）
+```
+
+**文件**：
+
+```
+Transformer/
+├── data/...
+├── models/
+│   └── best_model.pth
+├── src/
+│   ├── train.py       # 训练脚本（含数据预处理、模型定义、warmup+cosine 调度）
+│   └── infer.py       # 推理脚本（输出 submission.csv）
+└── hw04.ipynb         # 课程参考 Notebook（Easy 基线）
+```
+
+---
+
 ## 运行方式
 
 所有脚本从各自 `src/` 目录下运行：
@@ -172,6 +236,11 @@ python infer.py
 
 # CNN
 cd CNN/src
+python train.py
+python infer.py
+
+# Transformer
+cd Transformer/src
 python train.py
 python infer.py
 ```
