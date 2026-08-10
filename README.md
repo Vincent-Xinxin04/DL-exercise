@@ -1,6 +1,6 @@
 # DL-exercise
 
-深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Self-Attention 四个完整项目。
+深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Self-Attention、Transformer 五个完整项目。
 
 ---
 
@@ -12,6 +12,7 @@
 | [Classification](#2-classification) | 帧级音素分类 | MLP | MFCC + 上下文拼接 |
 | [CNN](#3-cnn) | 食物图像分类 | VGG 风格 CNN | 224x224 RGB |
 | [Self-Attention](#4-self-attention) | 说话人识别 | Transformer Encoder | mel 频谱 (T, 40) |
+| [Transformer](#5-transformer) | 英中机器翻译 | Transformer (Encoder-Decoder) | 英文句子 → 中文句子 |
 
 ---
 
@@ -64,6 +65,47 @@
 **数据**：训练时随机截取 256 帧（数据增强），推理时截取前 256 帧。每条音频 40 维 mel 频谱，通过 `metadata.json` 索引说话人标签。
 
 **训练配置**：Adam 优化器（lr=1e-3），CrossEntropyLoss，Batch Size 32，15 轮（Early Stop=3）。
+
+---
+
+## 5. Transformer
+
+**任务**：英中机器翻译（EN→ZH）——输入英文句子，输出中文翻译。
+
+**数据**：TED2020 平行语料（394k 对），取前 150k 对训练。英文词级别分词（标点分离），词表 10000；中文逐字分词，词表 5000。特殊标记 `<pad>`, `<sos>`, `<eos>`, `<unk>` 占据 id 0~3。句子截断至 max_len=50。
+
+**模型**：手写实现的标准 Transformer（无 `nn.Transformer` 依赖）。Encoder 和 Decoder 各 3 层，d_model=256、nhead=8、FFN 隐层 512。位置编码使用正弦/余弦方案。
+
+核心组件自底向上手写：`scaled_dot_product_attention` → `MultiHeadAttention` → `FeedForward` → `EncoderLayer` / `DecoderLayer` → `TransformerNMT`。约 9M 参数。
+
+- **Encoder**：词嵌入 + 位置编码 → 3×EncoderLayer（Self-Attention + FF，每子层带残差连接和 LayerNorm）。输出源句上下文表示 + padding mask。
+- **Decoder**：词嵌入 + 位置编码 → 3×DecoderLayer（Masked Self-Attention + Cross-Attention + FF）。Cross-Attention 以 Decoder 状态为 Q、Encoder 输出为 K/V，完成源语言到目标语言的映射。
+- **输出**：Linear 投影到中文词表（5000 维），softmax 取概率分布。
+- **推理解码**：`greedy_decode` 自回归生成，从 `<sos>` 开始逐 token 预测，遇 `<eos>` 或达 max_len 停止。
+
+**掩码策略**：Encoder 使用 padding mask `(B, 1, 1, L)` 屏蔽 `<pad>`；Decoder 自注意力使用因果掩码（上三角）+ padding mask 的联合掩码，确保位置 i 只能 attend 前面已生成的位置。
+
+**学习率调度**：Warmup（前 10% step 从 0 线性升至 1e-4）+ Cosine 衰减至 0。配合 AdamW 优化器和梯度裁剪（max_norm=1.0）。
+
+**损失函数**：CrossEntropyLoss，`ignore_index=PAD_IDX` 忽略 `<pad>` 位置，`label_smoothing=0.1` 标签平滑防过拟合。
+
+**训练配置**：AdamW 优化器（lr=1e-4），CrossEntropyLoss，Batch Size 64，20 轮（Early Stop=5）。95% 训练 / 5% 验证划分，保存验证损失最低的模型权重。
+
+**推理**：加载最佳模型对 `test.en` 批量翻译，贪心解码生成中文，输出到 `submission.zh`。
+
+**文件结构**：
+```
+transformer/
+├── data/
+│   ├── ted2020/raw.en & raw.zh    # 训练数据（394k 对平行语料）
+│   └── test/test.en               # 测试数据（4000 句英文）
+├── models/
+│   ├── vocab.pkl                  # 训练保存的英文/中文词表
+│   └── transformer_nmt_best.pth   # 训练保存的最佳模型权重
+└── src/
+    ├── train.py                   # 训练脚本（含完整模型定义）
+    └── infer.py                   # 推理脚本（批量翻译 + 输出 submission.zh）
+```
 
 ---
 
