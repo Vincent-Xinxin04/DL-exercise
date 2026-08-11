@@ -1,6 +1,6 @@
 # DL-exercise
 
-深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Self-Attention、Transformer 五个完整项目。
+深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Self-Attention、Transformer、GAN 六个完整项目。
 
 ---
 
@@ -13,6 +13,7 @@
 | [CNN](#3-cnn) | 食物图像分类 | VGG 风格 CNN | 224x224 RGB |
 | [Self-Attention](#4-self-attention) | 说话人识别 | Transformer Encoder | mel 频谱 (T, 40) |
 | [Transformer](#5-transformer) | 英中机器翻译 | Transformer (Encoder-Decoder) | 英文句子 → 中文句子 |
+| [GAN](#6-gan) | 人脸图像生成 | DCGAN | 100 维随机噪声 → 64×64 RGB |
 
 ---
 
@@ -105,6 +106,49 @@ transformer/
 └── src/
     ├── train.py                   # 训练脚本（含完整模型定义）
     └── infer.py                   # 推理脚本（批量翻译 + 输出 submission.zh）
+```
+
+---
+
+## 6. GAN
+
+**任务**：人脸图像生成——从 100 维随机噪声生成 64×64 的彩色人脸图像。
+
+**数据**：从图片目录加载人脸，使用 `transform` 做 Resize(64,64)、RandomHorizontalFlip、Normalize 到 `[-1, 1]`，匹配 Generator 的 Tanh 输出范围。
+
+**模型**：DCGAN（Deep Convolutional GAN），Generator 和 Discriminator 均为全卷积架构。
+
+- **Generator**：噪声向量 `(100,)` → Linear 展开为 `(512, 4, 4)` 特征种子 → 4 次 `ConvTranspose2d`（kernel_size=5, stride=2, padding=2, output_padding=1）逐级放大至 `(3, 64, 64)`，每层接 BatchNorm + ReLU。最终层省略 BN，直接接 Tanh 将像素值约束在 `[-1, 1]`。通道数逐步衰减（512→256→128→64→3），空间尺寸逐步翻倍（4→8→16→32→64）。
+
+- **Discriminator**：图像 `(3, 64, 64)` → 4 次 `Conv2d`（kernel_size=4, stride=2, padding=1）逐级降采样至 `(512, 4, 4)`，每层接 BatchNorm + LeakyReLU(0.2)。输入层省略 BN。通道数逐步递增（3→64→128→256→512）。最后一层 Conv2d(k=4, s=1, p=0) 将 4×4 特征图压为 `(1, 1, 1)` 标量，Sigmoid 输出 `[0, 1]` 表示真实概率。
+
+- **权重初始化**：均值 0、标准差 0.02 的正态分布（DCGAN 论文推荐）。
+
+**训练策略**：
+- **损失函数**：BCELoss。标签平滑——真实图标签用 0.9 代替 1.0，防止 D 过度自信导致梯度过早消失。假图标签保持 0。
+- **对抗博弈**：每 batch 先训 D（分辨真/假图），再训 G（试图骗过 D）。G 每步训 2 次（不同噪声），给 Generator 更多追赶机会。
+- **批量归一化**：Generator 全层接 BN；Discriminator 除输入层外均接 BN。最后一层均省略 BN。WGAN-GP 兼容性：代码注释提醒改用 InstanceNorm2d。
+
+**优化器**：Adam，lr=0.0002，beta1=0.5（低于默认 0.9，GAN 训练需更灵敏的梯度响应），beta2=0.999。
+
+**训练配置**：Batch Size 64，15 轮。每 5 轮保存一次模型权重 + 固定噪声生成的样本图，训练结束保存 G_final.pth。约 9M 参数（G: ~5.7M，D: ~3.3M）。
+
+**推理**：加载 G_final.pth，输入随机噪声批量生成 64 张人脸，拼成 8×8 网格保存。
+
+**文件结构**：
+```
+GAN/
+├── data/faces/                    # 人脸图像目录
+├── models/
+│   ├── G_epoch_5.pth              # 每 5 轮保存的 Generator 权重
+│   ├── D_epoch_5.pth              # 每 5 轮保存的 Discriminator 权重
+│   └── G_final.pth                # 最终 Generator 权重
+├── output/
+│   ├── epoch_005.png              # 每 5 轮生成的样本图
+│   └── inference_result.png       # 推理生成的 8×8 网格
+└── src/
+    ├── train.py                   # 训练脚本（含 Generator/Discriminator 定义）
+    └── infer.py                   # 推理脚本（加载 G 生成图像）
 ```
 
 ---
