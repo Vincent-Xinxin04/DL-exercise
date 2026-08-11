@@ -1,4 +1,4 @@
-from train import (
+﻿from train import (
     TransformerNMT, tokenize_en, encode, PAD_IDX, SOS_IDX, EOS_IDX,
     UNK_IDX, UNK_TOKEN, device
 )
@@ -9,7 +9,7 @@ import pickle
 import os
 from tqdm import tqdm
 
-# ==================== 超参数 ====================
+#超参数
 MAX_LEN = 50
 D_MODEL = 256
 NHEAD = 8

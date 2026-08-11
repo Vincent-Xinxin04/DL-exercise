@@ -1,4 +1,4 @@
-import torch
+﻿import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
@@ -11,7 +11,7 @@ from tqdm import tqdm
 from collections import Counter
 import numpy as np
 
-# ==================== 特殊标记 ====================
+#特殊标记
 PAD_TOKEN = '<pad>'
 SOS_TOKEN = '<sos>'
 EOS_TOKEN = '<eos>'
@@ -22,7 +22,7 @@ SOS_IDX = 1
 EOS_IDX = 2
 UNK_IDX = 3
 
-# ==================== 设置随机种子 ====================
+#设置随机种子
 def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -33,7 +33,7 @@ def set_seed(seed):
         torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
 
-# ==================== 分词 ====================
+#分词
 def tokenize_en(text):
     text = text.lower().strip()
     text = re.sub(r'([.,!?;:\"\'()\[\]{}])', r' \1 ', text)
@@ -49,7 +49,7 @@ def tokenize_zh(text):
         tokens.append(ch)
     return tokens
 
-# ==================== 构建词表 ====================
+#构建词表
 def build_vocab(sentences, max_size, tokenize_fn):
     counter = Counter()
     for sent in sentences:
@@ -69,7 +69,7 @@ def build_vocab(sentences, max_size, tokenize_fn):
 def encode(tokens, vocab):
     return [vocab.get(t, UNK_IDX) for t in tokens]
 
-# ==================== 数据集 ====================
+#数据集
 class TranslationDataset(Dataset):
     def __init__(self, en_path, zh_path, en_vocab, zh_vocab, max_len=50, max_samples=None):
         self.max_len = max_len
@@ -109,7 +109,7 @@ def collate_fn(batch):
 
     return enc_inputs, dec_inputs, dec_targets
 
-# ==================== 位置编码 ====================
+#位置编码
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len=5000, dropout=0.1):
         super().__init__()
@@ -128,7 +128,7 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:, :x.size(1)]
         return self.dropout(x)
 
-# ==================== 缩放点积注意力 ====================
+#缩放点积注意力
 def scaled_dot_product_attention(q, k, v, mask=None):
     d_k = q.size(-1)
     scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(d_k)
@@ -138,7 +138,7 @@ def scaled_dot_product_attention(q, k, v, mask=None):
     output = torch.matmul(attn, v)
     return output
 
-# ==================== 多头注意力 ====================
+#多头注意力
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, nhead, dropout=0.1):
         super().__init__()
@@ -166,7 +166,7 @@ class MultiHeadAttention(nn.Module):
         output = self.w_o(attn_output)
         return output
 
-# ==================== 前馈网络 ====================
+#前馈网络
 class FeedForward(nn.Module):
     def __init__(self, d_model, dim_feedforward, dropout=0.1):
         super().__init__()
@@ -177,7 +177,7 @@ class FeedForward(nn.Module):
     def forward(self, x):
         return self.fc2(self.dropout(F.relu(self.fc1(x))))
 
-# ==================== Encoder Layer ====================
+#Encoder Layer
 class EncoderLayer(nn.Module):
     def __init__(self, d_model, nhead, dim_feedforward, dropout=0.1):
         super().__init__()
@@ -195,7 +195,7 @@ class EncoderLayer(nn.Module):
         x = self.norm2(x + self.dropout2(ff_out))
         return x
 
-# ==================== Decoder Layer ====================
+#Decoder Layer
 class DecoderLayer(nn.Module):
     def __init__(self, d_model, nhead, dim_feedforward, dropout=0.1):
         super().__init__()
@@ -218,7 +218,7 @@ class DecoderLayer(nn.Module):
         x = self.norm3(x + self.dropout3(ff_out))
         return x
 
-# ==================== Transformer NMT 模型 ====================
+#Transformer NMT 模型
 class TransformerNMT(nn.Module):
     def __init__(self, src_vocab_size, tgt_vocab_size, d_model=256, nhead=8,
                  num_encoder_layers=3, num_decoder_layers=3, dim_feedforward=512,
@@ -292,7 +292,7 @@ class TransformerNMT(nn.Module):
 
         return ys
 
-# ==================== Warmup + Cosine 学习率调度 ====================
+#Warmup + Cosine 学习率调度
 def get_cosine_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps):
     def lr_lambda(current_step):
         if current_step < num_warmup_steps:
@@ -302,7 +302,7 @@ def get_cosine_schedule_with_warmup(optimizer, num_warmup_steps, num_training_st
         return max(0.0, 0.5 * (1.0 + math.cos(math.pi * progress)))
     return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
-# ==================== 超参数 ====================
+#超参数
 MAX_LEN = 50
 MAX_TRAIN_SAMPLES = 150000
 EN_VOCAB_SIZE = 10000
