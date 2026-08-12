@@ -1,6 +1,6 @@
 # DL-exercise
 
-深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Self-Attention、Transformer、GAN 六个完整项目。
+深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Self-Attention、Transformer、GAN、BERT 七个完整项目。
 
 ---
 
@@ -14,6 +14,7 @@
 | [Self-Attention](#4-self-attention) | 说话人识别 | Transformer Encoder | mel 频谱 (T, 40) |
 | [Transformer](#5-transformer) | 英中机器翻译 | Transformer (Encoder-Decoder) | 英文句子 → 中文句子 |
 | [GAN](#6-gan) | 人脸图像生成 | DCGAN | 100 维随机噪声 → 64×64 RGB |
+| [BERT](#7-bert) | 中文问答（抽述式） | BERT-base-chinese | 段落 + 问题 → 答案片段 |
 
 ---
 
@@ -153,9 +154,49 @@ GAN/
 
 ---
 
+## 7. BERT
+
+**任务**：中文抽述式问答（Extractive QA）——给定段落和问题，从段落中抽取答案片段。
+
+**数据**：31,690 训练 / 4,131 验证 / 4,957 测试条 QA 对。每条包含段落文本（`paragraphs`）+ 问题列表（`questions`），标注了答案的起止字符位置（`answer_start`/`answer_end`）和答案文本（`answer_text`）。同一段落可能关联多条问题。
+
+**模型**：`bert-base-chinese`（12 层 Transformer Encoder，768 维，110M 参数）微调。`BertForQuestionAnswering` 在 BERT 输出之上添加两个独立 Linear 头，分别预测答案起始位置和结束位置的 token 级概率。调整 logits 逐窗口比较 `start_prob + end_prob` 选取最佳答案。
+
+长段落使用滑窗（sliding window）处理，每个窗口独立预测，最后选置信度最高的窗口的答案。
+
+**数据处理**：
+- 问题和段落分别 tokenize（`add_special_tokens=False`），在 `__getitem__` 中拼接 `[CLS]` + question + `[SEP]` + paragraph_window + `[SEP]`，max_seq_len = 193。
+- **训练**：以答案中心为锚点，截取固定窗口（window_len=150），确保答案完整落入窗口内。答案坐标需从字符位置转换为 token 位置（`char_to_token`），再映射到拼接后序列中的新位置。
+- **验证 / 测试**：`doc_stride=150` 滑动窗口覆盖整段，每条 QA 对可能产生多个窗口。
+
+**训练策略**：
+- 混合精度训练（AMP）：`torch.amp.autocast('cuda')` + `GradScaler`，batch_size=32。
+- 优化器：`torch.optim.AdamW`，lr=5e-5，5 轮训练（Early Stop patience=3）。
+- 验证指标：Exact Match（EM），模型预测答案与真实答案文本完全匹配才算正确。
+
+**推理**：加载最佳模型权重，对测试集逐条滑动窗口预测，输出 `{id, answer}` 列表保存为 JSON。
+
+**文件结构**：
+```
+Bert/
+├── data/
+│   ├── hw7_train.json             # 训练集（31,690 QA 对）
+│   ├── hw7_dev.json               # 验证集（4,131 QA 对）
+│   ├── hw7_test.json              # 测试集（4,957 QA 对）
+│   └── hw7_test_result.json       # 推理输出
+├── models/
+│   └── bert_qa_best.pth           # 最佳模型权重
+└── src/
+    ├── train.py                   # 训练脚本（含 Dataset、evaluate、训练循环）
+    └── infer.py                   # 推理脚本（加载模型、滑动窗口预测）
+```
+
+---
+
 ## 环境依赖
 
 - Python 3.8+
 - PyTorch + torchvision
 - pandas, numpy
 - tqdm, PIL
+- transformers (HuggingFace)
