@@ -221,3 +221,8 @@ mlruns/
 lightning_logs/
 
 *.exe
+
+# HuggingFace model cache
+pretrained/
+models--*/
+*.safetensors
