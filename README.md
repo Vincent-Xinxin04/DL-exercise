@@ -1,6 +1,6 @@
 # DL-exercise
 
-深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Self-Attention、Transformer、GAN、BERT 七个完整项目。
+深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Self-Attention、Transformer、GAN、BERT、Autoencoder 八个完整项目。
 
 ---
 
@@ -15,6 +15,7 @@
 | [Transformer](#5-transformer) | 英中机器翻译 | Transformer (Encoder-Decoder) | 英文句子 → 中文句子 |
 | [GAN](#6-gan) | 人脸图像生成 | DCGAN | 100 维随机噪声 → 64×64 RGB |
 | [BERT](#7-bert) | 中文问答（抽述式） | BERT-base-chinese | 段落 + 问题 → 答案片段 |
+| [Autoencoder](#8-autoencoder) | 人脸异常检测 | VAE / ConvAutoencoder | 64×64 RGB → 重建误差 |
 
 ---
 
@@ -189,6 +190,43 @@ Bert/
 └── src/
     ├── train.py                   # 训练脚本（含 Dataset、evaluate、训练循环）
     └── infer.py                   # 推理脚本（加载模型、滑动窗口预测）
+```
+
+---
+
+## 8. Autoencoder
+
+**任务**：无监督异常检测——训练集全部为正常人脸图像，测试集混有异常图像，通过重建误差识别异常。
+
+**数据**：`trainingset.npy`（100,000 张正常人脸，64×64×3，uint8）+ `testingset.npy`（19,636 张，约半数异常）。数据以 numpy 数组形式存储，NHWC 格式，像素值 [0, 255]。
+
+**数据处理**：加载后 permute 为 NCHW 格式，归一化到 `[-1, 1]` 匹配 Tanh 输出范围（`2*x/255 - 1`）。
+
+**模型**：实现三种自编码器，通过 `config["model_idx"]` 切换。
+
+- **全连接 Autoencoder**：Flatten(12288) → 6 层全连接压缩至 4 维 latent → 6 层全连接还原至 12248 维，ReLU 激活，输出层 Tanh。
+- **ConvAutoencoder**：3 层 `Conv2d`（stride=2, 通道 3→16→32→64）下采样至 8×8×64 latent → 3 层 `ConvTranspose2d`（output_padding=1 精确还原尺寸）上采样回 64×64×3。
+- **VAE（Variational Autoencoder）**：编码器分叉输出 `mu` 和 `logvar`，通过重参数化技巧 `z = mu + eps * std` 采样 latent，再解码重建。latent 为概率分布而非确定点，具备生成能力。
+
+**损失函数**：VAE 使用重建损失（MSE）+ KL 散度（`-0.5 * Σ(1 + logvar - mu² - exp(logvar))`），强迫 latent 分布接近标准正态 `N(0, 1)`。
+
+**训练配置**：Adam 优化器（lr=1e-3, weight_decay=1e-5），Batch Size 32，30 轮，保存训练损失最低的模型权重。
+
+**推理**：对测试集每张图计算重建误差（MSE），作为异常得分输出到 CSV（`ID, score` 格式，19,636 行）。得分越高越可能为异常，由评分服务器用隐藏标签计算 ROC AUC。
+
+**文件结构**：
+```
+Autoencoder/
+├── data/
+│   ├── trainingset.npy             # 训练集（100,000 张正常人脸）
+│   └── testingset.npy              # 测试集（19,636 张，含异常）
+├── models/
+│   └── autoencoder_best.pth        # 最佳模型权重
+├── output/
+│   └── anomaly_scores.csv          # 异常得分输出（提交格式）
+└── src/
+    ├── train.py                    # 训练脚本（含三种模型定义）
+    └── infer.py                    # 推理脚本（重建误差 → 异常得分）
 ```
 
 ---
