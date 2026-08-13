@@ -1,6 +1,6 @@
 # DL-exercise
 
-深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Self-Attention、Transformer、GAN、BERT、Autoencoder 八个完整项目。
+深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Self-Attention、Transformer、GAN、BERT、Autoencoder 八个基础项目，以及 ISCC 竞赛平台的四个安全AI子项目。
 
 ---
 
@@ -16,6 +16,7 @@
 | [GAN](#6-gan) | 人脸图像生成 | DCGAN | 100 维随机噪声 → 64×64 RGB |
 | [BERT](#7-bert) | 中文问答（抽述式） | BERT-base-chinese | 段落 + 问题 → 答案片段 |
 | [Autoencoder](#8-autoencoder) | 人脸异常检测 | VAE / ConvAutoencoder | 64×64 RGB → 重建误差 |
+| [ISCC](#9-iscc) | 安全AI竞赛（4题） | 1D-ResNet / LightGBM / XGBoost+LGB+CatBoost / MultiScale-CNN+BiLSTM+Transformer | 二进制 / 流量 / PowerShell / 系统日志 |
 
 ---
 
@@ -227,6 +228,136 @@ Autoencoder/
 └── src/
     ├── train.py                    # 训练脚本（含三种模型定义）
     └── infer.py                    # 推理脚本（重建误差 → 异常得分）
+```
+
+---
+
+## 9. ISCC
+
+ISCC（信息安全常识竞赛）安全AI竞赛项目，包含四个子赛题，覆盖二进制漏洞检测、网络流量分类、PowerShell 恶意脚本识别和系统日志异常检测。
+
+### 9.1 Binary — 二进制漏洞检测与分类
+
+**任务**：对二进制可执行文件进行漏洞检测（2 类）与漏洞类型分类（86 类 CWE）。
+
+**模型**：1D-ResNet（指令序列分支）+ MLP（PE 元数据分支）多任务架构。指令字节经 Embedding → 1D 残差网络提取序列特征；`pefile` 提取 10 维 PE 元数据辅助判断。模型末端分叉为检测头（2 类）和分类头（86 类），联合损失优化。
+
+**核心策略**：
+- **半监督伪标签增强**：基础模型对测试集生成高置信度伪标签，反馈训练集缩小分布差异。
+- **HEM 难样本挖掘**：针对长尾类别（稀有 CWE）重采样高 Loss 样本，提升少样本类识别率。
+- **加权 Focal Loss**：类别不平衡时强制模型关注样本稀少的漏洞类型。
+
+**训练配置**：PyTorch，Adam 优化器，Focal Loss，分 Stage1（基础训练）→ Stage2（HEM 强化微调）两阶段训练。
+
+**文件结构**：
+```
+ISCC/binary/
+├── 源码/
+│   ├── data/                   # 训练/测试数据
+│   ├── dataset.py              # 数据集加载
+│   ├── model.py                # 1D-ResNet + MLP 模型
+│   ├── preprocess.py           # 指令序列 + PE 元数据特征提取
+│   ├── train.py                # 一键训练（基础→伪标签→HEM）
+│   ├── train_stage1.py         # 基础模型训练
+│   ├── train_stage2.py         # HEM 强化微调
+│   └── test.py                 # 推理 → submission.csv
+├── 模型/                       # 模型权重 (.pth) + 特征缓存 (.pkl)
+├── 提交结果/submission.csv
+└── docker容器/Dockerfile
+```
+
+---
+
+### 9.2 Net Classification — 网络流量安全事件类别判别
+
+**任务**：在强漂移环境下对网络流量进行安全事件类别判别。
+
+**模型**：LightGBM 集成（3 种子 × 5 折交叉验证 = 15 个子模型）。
+
+**核心策略（V9 提纯版）**：
+- **特征提纯**：移除冗余分桶特征，保留 Top-10 重要特征的平方项与交互项，捕捉非线性关系。
+- **高斯噪声注入**：训练时注入 Scale=0.05 的高斯噪声，防止过拟合。
+- **对抗权重校准**：通过对抗验证计算训练/测试分布相似度，按权重函数 $W = (p/(1-p))^{0.4}$ 重加权训练样本。
+- **自适应特征对齐**：推理时自动识别模型所需特征，动态补全/剔除维度。
+
+**训练配置**：LightGBM，5 折 CV，3 种随机种子（42 / 1024 / 2026），标签平滑 0.1。
+
+**文件结构**：
+```
+ISCC/net_classification/
+├── 源码/
+│   ├── data/                   # train_data.csv / test_data.csv
+│   ├── train.py                # 特征工程 + 对抗校准 + 集成训练
+│   ├── test.py                 # 加载集成模型 → 预测
+│   └── compare.py              # 模型对比工具
+├── 模型/                       # 15 个 .joblib 模型 + top_features.joblib
+├── 提交结果/submission.csv
+└── docker容器/Dockerfile
+```
+
+---
+
+### 9.3 PowerShell — PowerShell 恶意脚本分类
+
+**任务**：将 PowerShell 脚本分为 3 类：正常脚本 / 一般恶意脚本 / 混淆恶意脚本。
+
+**模型**：XGBoost + LightGBM + CatBoost 三模型加权集成，3 种子 × 5 折 = 45 个子模型概率平均。
+
+**核心策略**：
+- **高级特征工程**：行为强度统计、解码×网络交互、混淆深度（布局变化率、编码率）、作用域复杂度分析。
+- **防泄露 Target Encoding**：K-Fold 目标编码 + 轻微噪声，防止线下/线上分数偏差。
+- **类别加权**：对恶意类（1、2）设置 1.2 倍损失权重，提升 Macro-F1。
+
+**训练配置**：XGBoost / LightGBM / CatBoost，5 折 CV，3 种子平均，OOF 搜索最优融合权重。
+
+**文件结构**：
+```
+ISCC/powershell/
+├── 源码/
+│   ├── data/                   # data_train.csv / data_test.csv
+│   ├── train.py                # 特征工程 + 交叉验证 + 集成训练
+│   └── test.py                 # 加载集成模型 → 预测
+├── 模型/                       # .json / .txt / .cbm / .npy 模型文件
+├── 提交结果/submission.csv
+└── docker容器/Dockerfile
+```
+
+---
+
+### 9.4 System Log — 系统日志异常检测
+
+**任务**：系统日志异常检测，需识别 10 类异常类型并精确定位异常起止区间。
+
+**模型**：Multi-Scale CNN + Bi-LSTM + Transformer Encoder 混合架构。
+
+- **词嵌入层**：日志词项映射为高维向量。
+- **多尺度 CNN**：卷积核 [1, 3, 5, 7] 提取行内局部语义特征。
+- **Bi-LSTM**：捕捉日志序列间长距离依赖。
+- **位置编码**：显式位置信息增强异常起止敏感度。
+- **Transformer Encoder**：自注意力建模复杂上下文关联。
+
+**核心策略**：
+- **伪标签学习**：初步模型对测试集 Top 10% 高置信度预测作为伪标签反馈训练。
+- **对抗训练（FGM）**：Embedding 层注入微小扰动，增强对日志噪声的鲁棒性。
+- **精细化后处理**：空隙填充（合并间距 < 3 行的同类型区间）+ 最小长度过滤（阈值 2 行）。
+
+**评分公式**：$0.15 \cdot F1_{detect} + 0.50 \cdot IoU_{loc} + 0.35 \cdot F1_{type}$，重点优化区间定位（IoU）。
+
+**训练配置**：PyTorch，5 折 CV，每折保存最佳权重，推理时 5 模型概率平均集成。
+
+**文件结构**：
+```
+ISCC/system_log/
+├── 源码/
+│   ├── data/                   # train.csv / test.csv / test_data_b.csv
+│   ├── train.py                # 5 折交叉验证训练
+│   ├── test.py                 # 集成推理 + 后处理
+│   ├── pseudo_label.py         # 伪标签生成
+│   ├── eda.py                  # 探索性数据分析
+│   └── compare.py              # 模型对比
+├── 模型/                       # 5 折 .pth 权重 + vocab.pth
+├── 提交结果/submission.csv
+└── docker容器/Dockerfile
 ```
 
 ---
