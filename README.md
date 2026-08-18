@@ -1,6 +1,6 @@
 # DL-exercise
 
-深度学习（Deep Learning）学习历程与实践代码，包含回归、分类、CNN、Self-Attention、Transformer、GAN、BERT、Autoencoder 八个基础项目，以及 ISCC 竞赛平台的四个安全AI子项目。
+深度学习（Deep Learning）学习历程与实践代码，包含Regression、Classification、CNN、Self-Attention、Transformer、GAN、BERT、Autoencoder、RL 9个基础项目，以及 ISCC 竞赛平台的四个安全AI子项目。
 
 ---
 
