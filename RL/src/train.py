@@ -5,7 +5,7 @@ import torch.optim as optim
 import numpy as np
 import random
 import os
-import gym
+import gymnasium as gym
 from torch.distributions import Categorical
 from tqdm import tqdm
 
@@ -13,7 +13,6 @@ from tqdm import tqdm
 #设置随机种子
 def set_seed(seed, env=None):
     if env is not None:
-        env.seed(seed)
         env.action_space.seed(seed)
     np.random.seed(seed)
     random.seed(seed)
@@ -71,7 +70,7 @@ config = {
 
 if __name__ == '__main__':
     #创建环境
-    env = gym.make('LunarLander-v2')
+    env = gym.make('LunarLander-v3')
     set_seed(config["seed"], env)
 
     #初始化网络和Agent
@@ -91,13 +90,14 @@ if __name__ == '__main__':
 
         #收集多条轨迹
         for episode in range(config["episodes_per_epoch"]):
-            state = env.reset()
+            state, _ = env.reset()
             total_reward = 0
             episode_rewards = []
 
             while True:
                 action, log_prob = agent.sample(state)
-                next_state, reward, done, _ = env.step(action)
+                next_state, reward, terminated, truncated, _ = env.step(action)
+                done = terminated or truncated
 
                 log_probs.append(log_prob)
                 episode_rewards.append(reward)

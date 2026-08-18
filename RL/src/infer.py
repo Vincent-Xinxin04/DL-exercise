@@ -1,13 +1,13 @@
 import torch
 import numpy as np
 import os
-import gym
+import gymnasium as gym
 from train import config, PolicyGradientNetwork, set_seed
 
 
 if __name__ == '__main__':
     #创建环境并设置随机种子
-    env = gym.make('LunarLander-v2')
+    env = gym.make('LunarLander-v3')
     set_seed(config["seed"], env)
 
     #加载模型
@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     for i in range(NUM_OF_TEST):
         actions = []
-        state = env.reset()
+        state, _ = env.reset()
         total_reward = 0
         done = False
 
@@ -37,7 +37,8 @@ if __name__ == '__main__':
             action_prob = network(torch.FloatTensor(state))
             action = torch.argmax(action_prob).item()
             actions.append(action)
-            state, reward, done, _ = env.step(action)
+            state, reward, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
             total_reward += reward
 
         print(f'Test {i+1}: Total Reward = {total_reward:.2f}')
@@ -61,10 +62,11 @@ if __name__ == '__main__':
 
     verify_rewards = []
     for actions in saved_actions:
-        state = env.reset()
+        state, _ = env.reset()
         total_reward = 0
         for action in actions:
-            state, reward, done, _ = env.step(action)
+            state, reward, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
             total_reward += reward
             if done:
                 break
