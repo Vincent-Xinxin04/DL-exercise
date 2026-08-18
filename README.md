@@ -16,7 +16,8 @@
 | [GAN](#6-gan) | 人脸图像生成 | DCGAN | 100 维随机噪声 → 64×64 RGB |
 | [BERT](#7-bert) | 中文问答（抽述式） | BERT-base-chinese | 段落 + 问题 → 答案片段 |
 | [Autoencoder](#8-autoencoder) | 人脸异常检测 | VAE / ConvAutoencoder | 64×64 RGB → 重建误差 |
-| [ISCC](#9-iscc) | 安全AI竞赛（4题） | 1D-ResNet / LightGBM / XGBoost+LGB+CatBoost / MultiScale-CNN+BiLSTM+Transformer | 二进制 / 流量 / PowerShell / 系统日志 |
+| [RL](#9-rl) | 月球着陆器控制 | REINFORCE (Policy Gradient) | 8 维状态 → 4 维动作 |
+| [ISCC](#10-iscc) | 安全AI竞赛（4题） | 1D-ResNet / LightGBM / XGBoost+LGB+CatBoost / MultiScale-CNN+BiLSTM+Transformer | 二进制 / 流量 / PowerShell / 系统日志 |
 
 ---
 
@@ -232,11 +233,58 @@ Autoencoder/
 
 ---
 
-## 9. ISCC
+## 9. RL
+
+**任务**：月球着陆器控制——训练智能体在 LunarLander-v3 环境中实现安全着陆。
+
+**算法**：REINFORCE（策略梯度蒙特卡洛方法），属于强化学习中最基础的 on-policy 策略梯度算法。
+
+**模型**：三层全连接策略网络（8 → 16 → 16 → 4），tanh 隐藏层激活 + softmax 输出动作概率分布。
+
+**核心组件**：
+- **策略网络（Policy Network）**：将 8 维状态映射为 4 个动作的概率分布
+- **Agent**：封装策略网络，提供动作采样（探索）和策略更新能力
+- **折扣因子（γ=0.99）**：计算折扣累计回报，平衡即时与长远奖励
+- **奖励标准化**：对多条轨迹的回报做 Z-score 归一化，降低梯度估计方差
+
+**训练流程**：
+1. 每个 epoch 收集 5 条轨迹（共 5 个 episode），记录每步的 log_prob 和 reward
+2. 反向计算每步的折扣累计回报 G_t = r_t + γ·r_{t+1} + ...
+3. 所有轨迹的回报一起标准化，得到 advantage
+4. 使用 REINFORCE 损失 loss = -Σ log π(a_t|s_t) × G_t 更新策略网络
+
+**训练配置**：SGD 优化器（lr=0.001），500 个 epoch（每 epoch 收集 5 条轨迹），种子 543。
+
+**环境**：LunarLander-v3（gymnasium）。
+
+- **状态空间**：8 维连续向量（位置 x/y、速度 x/y、角度、角速度、左右腿接触标志）
+- **动作空间**：4 个离散动作（不动 / 左推进 / 主引擎 / 右推进）
+- **奖励规则**：接近降落点 + 分，主引擎点火 -0.3/帧，接触地面 +10，成功着陆 +200，坠毁 -100
+
+**推理**：加载训练好的策略网络，使用贪婪策略（argmax）进行 5 次测试，生成动作序列用于提交。
+
+**文件结构**：
+```
+RL/
+├── src/
+│   ├── train.py                   # 训练脚本（含网络和 Agent 定义）
+│   └── infer.py                   # 推理脚本（加载模型、生成动作序列）
+├── models/
+│   └── policy_gradient.pth        # 训练好的策略网络权重
+├── output/
+│   ├── total_rewards.png          # 累计奖励训练曲线
+│   ├── final_rewards.png          # 最终奖励训练曲线
+│   └── Action_List.npy            # 测试动作序列（提交格式）
+└── README.md
+```
+
+---
+
+## 10. ISCC
 
 ISCC（信息安全常识竞赛）安全AI竞赛项目，包含四个子赛题，覆盖二进制漏洞检测、网络流量分类、PowerShell 恶意脚本识别和系统日志异常检测。
 
-### 9.1 Binary — 二进制漏洞检测与分类
+### 10.1 Binary — 二进制漏洞检测与分类
 
 **任务**：对二进制可执行文件进行漏洞检测（2 类）与漏洞类型分类（86 类 CWE）。
 
@@ -268,7 +316,7 @@ ISCC/binary/
 
 ---
 
-### 9.2 Net Classification — 网络流量安全事件类别判别
+### 10.2 Net Classification — 网络流量安全事件类别判别
 
 **任务**：在强漂移环境下对网络流量进行安全事件类别判别。
 
@@ -297,7 +345,7 @@ ISCC/net_classification/
 
 ---
 
-### 9.3 PowerShell — PowerShell 恶意脚本分类
+### 10.3 PowerShell — PowerShell 恶意脚本分类
 
 **任务**：将 PowerShell 脚本分为 3 类：正常脚本 / 一般恶意脚本 / 混淆恶意脚本。
 
@@ -324,7 +372,7 @@ ISCC/powershell/
 
 ---
 
-### 9.4 System Log — 系统日志异常检测
+### 10.4 System Log — 系统日志异常检测
 
 **任务**：系统日志异常检测，需识别 10 类异常类型并精确定位异常起止区间。
 
@@ -369,3 +417,4 @@ ISCC/system_log/
 - pandas, numpy
 - tqdm, PIL
 - transformers (HuggingFace)
+- gymnasium[box2d], pygame (RL 项目)
